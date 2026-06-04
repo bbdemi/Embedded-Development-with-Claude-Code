@@ -48,8 +48,10 @@ void StepperDriver::setSpeed(uint32_t stepsPerSec) {
     uint32_t half = max(10u, 1000000u / (stepsPerSec * 2));
     portENTER_CRITICAL(&_mux);
     _halfPeriodUs = half;
-    _timer.setAlarmPeriod(half);
     portEXIT_CRITICAL(&_mux);
+    // setAlarmPeriod (timerAlarmWrite) acquires its own internal spinlock.
+    // Calling it inside _mux would nest two spinlocks → deadlock on dual-core ESP32.
+    _timer.setAlarmPeriod(half);
 }
 
 void StepperDriver::moveTo(int32_t position) {

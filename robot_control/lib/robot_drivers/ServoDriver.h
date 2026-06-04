@@ -27,6 +27,11 @@ private:
     static constexpr uint32_t SERVO_FREQ_HZ   = 50;
     static constexpr uint8_t  LEDC_RESOLUTION = 16;
 
+
+
+
+    
+
     static constexpr uint32_t _usToDuty(uint16_t us) {
         return (uint32_t)us * 65536u / 20000u;
     }

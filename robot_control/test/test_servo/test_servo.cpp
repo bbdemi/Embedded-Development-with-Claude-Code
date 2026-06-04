@@ -1,8 +1,10 @@
 #include <unity.h>
 #include <Arduino.h>
+#include "MockLedc.h"
 #include "ServoDriver.h"
 
-static ServoDriver servo(13, 0);
+static MockLedc ledc;
+static ServoDriver servo(13, 0, ledc);
 
 void setUp() {}
 void tearDown() {}
@@ -43,19 +45,16 @@ void test_set_microseconds_midrange() {
 }
 
 void test_set_microseconds_clamps_below_min() {
-    servo.setMicroseconds(100); // below MIN_PULSE_US (500)
+    servo.setMicroseconds(100);
     TEST_ASSERT_EQUAL_UINT16(ServoDriver::MIN_PULSE_US, servo.getMicroseconds());
 }
 
 void test_set_microseconds_clamps_above_max() {
-    servo.setMicroseconds(3000); // above MAX_PULSE_US (2500)
+    servo.setMicroseconds(3000);
     TEST_ASSERT_EQUAL_UINT16(ServoDriver::MAX_PULSE_US, servo.getMicroseconds());
 }
 
-void setup() {
-    delay(2000);
-    servo.begin();
-
+static void runTests() {
     UNITY_BEGIN();
     RUN_TEST(test_initial_angle_after_begin);
     RUN_TEST(test_set_angle_midrange);
@@ -69,4 +68,9 @@ void setup() {
     UNITY_END();
 }
 
+#ifdef ARDUINO
+void setup() { delay(2000); servo.begin(); runTests(); }
 void loop() {}
+#else
+int main(int, char**) { servo.begin(); runTests(); return 0; }
+#endif

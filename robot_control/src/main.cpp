@@ -2,7 +2,9 @@
 #include "Esp32Gpio.h"
 #include "Esp32Timer.h"
 #include "Esp32Ledc.h"
+#include "Esp32Uart.h"
 #include "StepperDriver.h"
+#include "StepperUartConfig.h"
 #include "ServoDriver.h"
 
 // ── Pin assignments ────────────────────────────────────────────────────────────
@@ -17,6 +19,10 @@ static Esp32Gpio  gpio;
 static Esp32Timer timer0(0);
 static Esp32Ledc  ledc;
 
+// TODO: set uartNum, TX pin, RX pin and baud rate to match your custom board.
+static Esp32Uart        stepperUart(/*uartNum=*/1, /*TX=*/17, /*RX=*/16);
+static StepperUartConfig stepperConfig(stepperUart);
+
 // ── Driver instances ───────────────────────────────────────────────────────────
 StepperDriver stepper(STEP_PIN, DIR_PIN, gpio, timer0, /*isrSlot=*/0, EN_PIN);
 ServoDriver   servo(SERVO_PIN, LEDC_CH, ledc);
@@ -26,6 +32,9 @@ void runDemo();
 // ── Setup ──────────────────────────────────────────────────────────────────────
 void setup() {
     Serial.begin(115200);
+
+    stepperConfig.begin(115200); // TODO: match your driver's baud rate
+    stepperConfig.setMicrosteps(16);
 
     stepper.begin();
     stepper.enable();

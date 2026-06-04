@@ -1,9 +1,13 @@
 #include <unity.h>
 #include <Arduino.h>
+#include "MockGpio.h"
+#include "MockTimer.h"
 #include "StepperDriver.h"
 
-// Uses the same pins as main firmware; motor need not be connected for these tests.
-static StepperDriver stepper(18, 19, 21, 0);
+static MockGpio gpio;
+static MockTimer timer;
+// stepPin=18, dirPin=19, isrSlot=0, enablePin=21
+static StepperDriver stepper(18, 19, gpio, timer, /*isrSlot=*/0, /*enablePin=*/21);
 
 void setUp() {}
 void tearDown() {}
@@ -28,24 +32,23 @@ void test_set_position_negative() {
 }
 
 void test_set_position_stops_motion() {
-    // setPosition must halt any active move
     stepper.setPosition(0);
     stepper.setSpeed(500);
     stepper.move(1000);
-    stepper.setPosition(0); // forcibly cancel
+    stepper.setPosition(0);
     TEST_ASSERT_FALSE(stepper.isRunning());
     TEST_ASSERT_EQUAL_INT32(0, stepper.getPosition());
 }
 
 void test_stop_when_idle_is_safe() {
     stepper.setPosition(0);
-    stepper.stop(); // must not crash when already idle
+    stepper.stop();
     TEST_ASSERT_FALSE(stepper.isRunning());
 }
 
 void test_move_zero_steps_stays_idle() {
     stepper.setPosition(0);
-    stepper.move(0); // moveTo(current) → early return, no motion
+    stepper.move(0);
     TEST_ASSERT_FALSE(stepper.isRunning());
 }
 
@@ -54,14 +57,10 @@ void test_move_nonzero_starts_running() {
     stepper.setSpeed(1000);
     stepper.move(200);
     TEST_ASSERT_TRUE(stepper.isRunning());
-    stepper.stop(); // clean up so the motor doesn't keep stepping
+    stepper.stop();
 }
 
-void setup() {
-    delay(2000); // let serial settle before Unity output begins
-    stepper.begin();
-    stepper.enable();
-
+static void runTests() {
     UNITY_BEGIN();
     RUN_TEST(test_not_running_after_begin);
     RUN_TEST(test_set_position_positive);
@@ -74,4 +73,9 @@ void setup() {
     UNITY_END();
 }
 
+#ifdef ARDUINO
+void setup() { delay(2000); stepper.begin(); stepper.enable(); runTests(); }
 void loop() {}
+#else
+int main(int, char**) { stepper.begin(); stepper.enable(); runTests(); return 0; }
+#endif
