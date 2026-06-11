@@ -6,6 +6,7 @@
 #include "StepperDriver.h"
 #include "StepperUartConfig.h"
 #include "ServoDriver.h"
+#include "CommandParser.h"
 
 // ── Pin assignments ────────────────────────────────────────────────────────────
 static constexpr uint8_t STEP_PIN  = 27;
@@ -23,9 +24,13 @@ static Esp32Ledc  ledc;
 static Esp32Uart        stepperUart(/*uartNum=*/1, /*TX=*/17, /*RX=*/16);
 static StepperUartConfig stepperConfig(stepperUart);
 
+// UART0 wraps the USB Serial port — used by CommandParser to receive commands.
+static Esp32Uart cmdSerial(/*uartNum=*/0);
+
 // ── Driver instances ───────────────────────────────────────────────────────────
 StepperDriver stepper(STEP_PIN, DIR_PIN, gpio, timer0, /*isrSlot=*/0, EN_PIN);
 ServoDriver   servo(SERVO_PIN, LEDC_CH, ledc);
+CommandParser cmdParser(cmdSerial, stepper, servo);
 
 void runDemo();
 
@@ -52,14 +57,7 @@ void loop() {
         Serial.printf("Stepper stopped at position: %ld\n", stepper.getPosition());
     }
 
-    if (Serial.available()) {
-        char cmd = Serial.read();
-        int  val = Serial.parseInt();
-
-        if      (cmd == 's') { Serial.printf("Moving %d steps\n", val); stepper.move(val); }
-        else if (cmd == 'v') { Serial.printf("Servo → %.1f°\n", (float)val); servo.setAngle((float)val); }
-        else if (cmd == 'x') { stepper.stop(); Serial.println("Stepper stopped."); }
-    }
+    cmdParser.poll();
 
     delay(100);
 }
